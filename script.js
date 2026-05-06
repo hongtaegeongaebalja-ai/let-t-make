@@ -10,7 +10,11 @@ const clearBtn = document.getElementById("clearBtn");
 let files = [];
 
 function addFiles(newFiles) {
-  files = Array.from(newFiles).filter(file => file.size > 0);
+  files = Array.from(newFiles).filter(file => {
+    const name = file.name.toLowerCase();
+    return name.endsWith(".html") || name.endsWith(".css") || name.endsWith(".js");
+  });
+
   renderFiles();
 }
 
@@ -24,7 +28,7 @@ function renderFiles() {
 
   files.forEach(file => {
     const li = document.createElement("li");
-    li.textContent = `${file.name} (${file.size} bytes)`;
+    li.textContent = `${file.name} - ${file.size} bytes`;
     fileList.appendChild(li);
   });
 }
@@ -48,54 +52,28 @@ dropZone.addEventListener("drop", e => {
   addFiles(e.dataTransfer.files);
 });
 
-function fileToBase64(file) {
+function readFileText(file) {
   return new Promise((resolve, reject) => {
-    if (!file || file.size === 0) {
-      reject(new Error(`${file.name} cannot be read`));
-      return;
-    }
-
     const reader = new FileReader();
 
     reader.onload = () => {
-      const result = reader.result;
-
-      if (!result || typeof result !== "string") {
-        reject(new Error(`${file.name} read failed`));
-        return;
-      }
-
-      const base64 = result.split(",")[1];
-
-      if (!base64) {
-        reject(new Error(`${file.name} base64 failed`));
-        return;
-      }
-
       resolve({
         name: file.name,
-        content: base64
+        text: reader.result
       });
     };
 
     reader.onerror = () => {
-      reject(new Error(`${file.name} read error`));
+      reject(new Error(file.name + " read failed"));
     };
 
-    reader.readAsDataURL(file);
+    reader.readAsText(file);
   });
 }
 
 makeBtn.addEventListener("click", async () => {
   if (files.length === 0) {
-    alert("Please upload index.html, style.css, script.js files.");
-    return;
-  }
-
-  const hasIndex = files.some(file => file.name.toLowerCase() === "index.html");
-
-  if (!hasIndex) {
-    alert("index.html file is required.");
+    alert("Upload at least one HTML, CSS, or JS file.");
     return;
   }
 
@@ -103,7 +81,7 @@ makeBtn.addEventListener("click", async () => {
   makeBtn.textContent = "Creating...";
 
   try {
-    const uploadFiles = await Promise.all(files.map(fileToBase64));
+    const uploadFiles = await Promise.all(files.map(readFileText));
 
     const response = await fetch("/api/create", {
       method: "POST",
@@ -113,11 +91,17 @@ makeBtn.addEventListener("click", async () => {
       body: JSON.stringify({ files: uploadFiles })
     });
 
-    const data = await response.json();
+    const text = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("API not working. Check api/create.js and Redeploy.");
+    }
 
     if (!response.ok) {
-      alert(data.error || "Address creation failed.");
-      return;
+      throw new Error(data.error || "Address creation failed.");
     }
 
     createdLink.href = data.url;

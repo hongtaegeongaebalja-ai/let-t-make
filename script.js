@@ -86,10 +86,21 @@ makeBtn.addEventListener("click", async () => {
       body: JSON.stringify({ files: uploadFiles })
     });
 
-    const data = await response.json();
+    let data = {};
+
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      throw new Error("Server did not return JSON. Check api/create.js.");
+    }
 
     if (!response.ok) {
-      alert("Address creation failed.");
+      alert(data.error || "Address creation failed.");
+      return;
+    }
+
+    if (!data.url) {
+      alert("No URL returned from server.");
       return;
     }
 
@@ -99,7 +110,7 @@ makeBtn.addEventListener("click", async () => {
 
     saveAddress(data.url);
   } catch (error) {
-    alert("Error occurred.");
+    alert("Error: " + error.message);
   } finally {
     makeBtn.textContent = "Create Address";
     makeBtn.disabled = false;

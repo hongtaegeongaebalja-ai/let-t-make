@@ -9,21 +9,29 @@ const clearBtn = document.getElementById("clearBtn");
 
 let files = [];
 
+function addFiles(newFiles) {
+  files = Array.from(newFiles).filter(file => file.size > 0);
+  renderFiles();
+}
+
 function renderFiles() {
   fileList.innerHTML = "";
+
+  if (files.length === 0) {
+    fileList.innerHTML = "<li>No files selected</li>";
+    return;
+  }
+
   files.forEach(file => {
     const li = document.createElement("li");
-    li.textContent = file.name;
+    li.textContent = `${file.name} (${file.size} bytes)`;
     fileList.appendChild(li);
   });
 }
 
-function addFiles(newFiles) {
-  files = Array.from(newFiles);
-  renderFiles();
-}
-
-fileInput.addEventListener("change", () => addFiles(fileInput.files));
+fileInput.addEventListener("change", () => {
+  addFiles(fileInput.files);
+});
 
 dropZone.addEventListener("dragover", e => {
   e.preventDefault();
@@ -42,27 +50,51 @@ dropZone.addEventListener("drop", e => {
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
+    if (!file || file.size === 0) {
+      reject(new Error(`${file.name} cannot be read`));
+      return;
+    }
+
     const reader = new FileReader();
 
     reader.onload = () => {
+      const result = reader.result;
+
+      if (!result || typeof result !== "string") {
+        reject(new Error(`${file.name} read failed`));
+        return;
+      }
+
+      const base64 = result.split(",")[1];
+
+      if (!base64) {
+        reject(new Error(`${file.name} base64 failed`));
+        return;
+      }
+
       resolve({
         name: file.name,
-        content: reader.result.split(",")[1]
+        content: base64
       });
     };
 
-    reader.onerror = () => reject(new Error("File read failed"));
+    reader.onerror = () => {
+      reject(new Error(`${file.name} read error`));
+    };
+
     reader.readAsDataURL(file);
   });
 }
 
 makeBtn.addEventListener("click", async () => {
   if (files.length === 0) {
-    alert("Please upload files first.");
+    alert("Please upload index.html, style.css, script.js files.");
     return;
   }
 
-  if (!files.some(file => file.name.toLowerCase() === "index.html")) {
+  const hasIndex = files.some(file => file.name.toLowerCase() === "index.html");
+
+  if (!hasIndex) {
     alert("index.html file is required.");
     return;
   }
@@ -81,17 +113,11 @@ makeBtn.addEventListener("click", async () => {
       body: JSON.stringify({ files: uploadFiles })
     });
 
-    const text = await response.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Server response is not JSON: " + text.slice(0, 100));
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Address creation failed");
+      alert(data.error || "Address creation failed.");
+      return;
     }
 
     createdLink.href = data.url;
@@ -109,6 +135,7 @@ makeBtn.addEventListener("click", async () => {
 
 function saveAddress(url) {
   const saved = JSON.parse(localStorage.getItem("savedLinks")) || [];
+
   saved.unshift({
     url,
     date: new Date().toLocaleString()

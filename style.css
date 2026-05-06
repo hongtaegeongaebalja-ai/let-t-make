@@ -4,23 +4,22 @@
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #ffffff;
+  background: #fff;
   color: #111;
+  font-family: Arial, sans-serif;
 }
 
 .app {
-  width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .card {
   border: 3px solid #111;
-  padding: 20px;
+  padding: 18px;
   background: #fff;
 }
 
@@ -31,26 +30,21 @@ h1 {
 
 h2 {
   font-size: 24px;
-  margin: 0 0 12px;
-}
-
-p {
-  font-size: 16px;
 }
 
 .drop-zone {
   border: 3px dashed #111;
-  min-height: 190px;
+  min-height: 180px;
   display: grid;
   place-items: center;
-  text-align: center;
   gap: 8px;
-  padding: 20px;
-  margin-top: 20px;
+  margin-top: 18px;
+  padding: 18px;
+  text-align: center;
 }
 
 .drop-zone.active {
-  background: #f1f1f1;
+  background: #eee;
 }
 
 .file-btn,
@@ -59,8 +53,8 @@ p {
   border: 3px solid #111;
   background: #fff;
   padding: 14px 20px;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: bold;
   cursor: pointer;
 }
 
@@ -70,49 +64,25 @@ p {
 
 .main-btn {
   width: 100%;
-  margin-top: 18px;
+  margin-top: 16px;
   background: #111;
   color: #fff;
 }
 
 .sub-btn {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
-.file-list ul {
-  padding-left: 20px;
-}
-
-.file-list li {
-  font-size: 16px;
-  margin: 6px 0;
-}
-
-.result {
-  border: 3px solid #111;
-  margin-top: 18px;
-  padding: 14px;
-  word-break: break-all;
-}
-
-.result a {
-  color: #111;
-  font-weight: bold;
-}
-
-.saved-list {
-  display: grid;
-  gap: 10px;
-}
-
+.result,
 .saved-item {
   border: 2px solid #111;
   padding: 12px;
+  margin-top: 12px;
   word-break: break-all;
 }
 
-.saved-item a {
+a {
   color: #111;
   font-weight: bold;
 }
@@ -121,37 +91,18 @@ p {
   display: none;
 }
 
-@media (max-width: 480px) {
+@media (min-width: 768px) {
   .app {
-    padding: 10px;
+    grid-template-columns: 1fr 1fr;
   }
+}
 
-  .card {
-    padding: 14px;
-  }
-
+@media (max-width: 480px) {
   h1 {
     font-size: 28px;
   }
 
-  h2 {
-    font-size: 21px;
-  }
-
-  .drop-zone {
-    min-height: 160px;
-  }
-
-  .file-btn,
-  .main-btn,
-  .sub-btn {
-    font-size: 16px;
-    padding: 13px;
-  }
-}
-
-@media (min-width: 768px) {
-  .app {
-    grid-template-columns: 1fr 1fr;
+  .card {
+    padding: 14px;
   }
 }

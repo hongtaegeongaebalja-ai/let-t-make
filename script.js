@@ -19,13 +19,11 @@ function renderFiles() {
 }
 
 function addFiles(newFiles) {
-  files = [...files, ...Array.from(newFiles)];
+  files = Array.from(newFiles);
   renderFiles();
 }
 
-fileInput.addEventListener("change", () => {
-  addFiles(fileInput.files);
-});
+fileInput.addEventListener("change", () => addFiles(fileInput.files));
 
 dropZone.addEventListener("dragover", e => {
   e.preventDefault();
@@ -42,19 +40,18 @@ dropZone.addEventListener("drop", e => {
   addFiles(e.dataTransfer.files);
 });
 
-function readFileAsBase64(file) {
+function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      const base64 = reader.result.split(",")[1];
       resolve({
         name: file.name,
-        content: base64
+        content: reader.result.split(",")[1]
       });
     };
 
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error("File read failed"));
     reader.readAsDataURL(file);
   });
 }
@@ -65,18 +62,16 @@ makeBtn.addEventListener("click", async () => {
     return;
   }
 
-  const hasIndex = files.some(file => file.name.toLowerCase() === "index.html");
-
-  if (!hasIndex) {
+  if (!files.some(file => file.name.toLowerCase() === "index.html")) {
     alert("index.html file is required.");
     return;
   }
 
-  makeBtn.textContent = "Creating...";
   makeBtn.disabled = true;
+  makeBtn.textContent = "Creating...";
 
   try {
-    const uploadFiles = await Promise.all(files.map(readFileAsBase64));
+    const uploadFiles = await Promise.all(files.map(fileToBase64));
 
     const response = await fetch("/api/create", {
       method: "POST",
@@ -86,22 +81,17 @@ makeBtn.addEventListener("click", async () => {
       body: JSON.stringify({ files: uploadFiles })
     });
 
-    let data = {};
+    const text = await response.text();
 
+    let data;
     try {
-      data = await response.json();
-    } catch (jsonError) {
-      throw new Error("Server did not return JSON. Check api/create.js.");
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Server response is not JSON: " + text.slice(0, 100));
     }
 
     if (!response.ok) {
-      alert(data.error || "Address creation failed.");
-      return;
-    }
-
-    if (!data.url) {
-      alert("No URL returned from server.");
-      return;
+      throw new Error(data.error || "Address creation failed");
     }
 
     createdLink.href = data.url;
@@ -112,14 +102,13 @@ makeBtn.addEventListener("click", async () => {
   } catch (error) {
     alert("Error: " + error.message);
   } finally {
-    makeBtn.textContent = "Create Address";
     makeBtn.disabled = false;
+    makeBtn.textContent = "Create Address";
   }
 });
 
 function saveAddress(url) {
   const saved = JSON.parse(localStorage.getItem("savedLinks")) || [];
-
   saved.unshift({
     url,
     date: new Date().toLocaleString()

@@ -11,8 +11,7 @@ let files = [];
 
 function renderFiles() {
   fileList.innerHTML = "";
-
-  files.forEach((file) => {
+  files.forEach(file => {
     const li = document.createElement("li");
     li.textContent = file.name;
     fileList.appendChild(li);
@@ -28,7 +27,7 @@ fileInput.addEventListener("change", () => {
   addFiles(fileInput.files);
 });
 
-dropZone.addEventListener("dragover", (e) => {
+dropZone.addEventListener("dragover", e => {
   e.preventDefault();
   dropZone.classList.add("active");
 });
@@ -37,42 +36,80 @@ dropZone.addEventListener("dragleave", () => {
   dropZone.classList.remove("active");
 });
 
-dropZone.addEventListener("drop", (e) => {
+dropZone.addEventListener("drop", e => {
   e.preventDefault();
   dropZone.classList.remove("active");
   addFiles(e.dataTransfer.files);
 });
 
-makeBtn.addEventListener("click", () => {
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const base64 = reader.result.split(",")[1];
+      resolve({
+        name: file.name,
+        content: base64
+      });
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+makeBtn.addEventListener("click", async () => {
   if (files.length === 0) {
-    alert("Please upload HTML, CSS, and JavaScript files first.");
+    alert("Please upload files first.");
     return;
   }
 
-  const indexFile = files.find(file => file.name.toLowerCase() === "index.html");
+  const hasIndex = files.some(file => file.name.toLowerCase() === "index.html");
 
-  if (!indexFile) {
+  if (!hasIndex) {
     alert("index.html file is required.");
     return;
   }
 
-  const localUrl = URL.createObjectURL(indexFile);
+  makeBtn.textContent = "Creating...";
+  makeBtn.disabled = true;
 
-  const fakeGoogleUrl =
-    "https://sites.google.com/view/my-web-" + Date.now();
+  try {
+    const uploadFiles = await Promise.all(files.map(readFileAsBase64));
 
-  createdLink.href = localUrl;
-  createdLink.textContent = fakeGoogleUrl;
-  resultBox.classList.remove("hidden");
+    const response = await fetch("/api/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ files: uploadFiles })
+    });
 
-  saveAddress(fakeGoogleUrl, localUrl);
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert("Address creation failed.");
+      return;
+    }
+
+    createdLink.href = data.url;
+    createdLink.textContent = data.url;
+    resultBox.classList.remove("hidden");
+
+    saveAddress(data.url);
+  } catch (error) {
+    alert("Error occurred.");
+  } finally {
+    makeBtn.textContent = "Create Address";
+    makeBtn.disabled = false;
+  }
 });
 
-function saveAddress(title, url) {
+function saveAddress(url) {
   const saved = JSON.parse(localStorage.getItem("savedLinks")) || [];
 
   saved.unshift({
-    title,
     url,
     date: new Date().toLocaleString()
   });
@@ -90,15 +127,13 @@ function renderSaved() {
     return;
   }
 
-  saved.forEach((item) => {
+  saved.forEach(item => {
     const div = document.createElement("div");
     div.className = "saved-item";
-
     div.innerHTML = `
-      <a href="${item.url}" target="_blank">${item.title}</a>
+      <a href="${item.url}" target="_blank">${item.url}</a>
       <p>${item.date}</p>
     `;
-
     savedList.appendChild(div);
   });
 }

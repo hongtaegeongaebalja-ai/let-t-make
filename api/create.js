@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "POST only" }); 
+      return res.status(405).json({ error: "POST only" });
     }
 
     const { files } = req.body;
@@ -10,9 +10,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "No files uploaded" });
     }
 
-    const token = process.env.GITHUB_TOKEN;
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const token = process.env.GITHUB_TOKEN?.trim();
+    const owner = process.env.GITHUB_OWNER?.trim();
+    const repo = process.env.GITHUB_REPO?.trim();
 
     if (!token) return res.status(500).json({ error: "Missing GITHUB_TOKEN" });
     if (!owner) return res.status(500).json({ error: "Missing GITHUB_OWNER" });
@@ -20,21 +20,17 @@ export default async function handler(req, res) {
 
     const siteId = "site-" + Date.now();
 
-    let htmlFile = files.find(file => file.name.toLowerCase().endsWith(".html"));
-    let cssFile = files.find(file => file.name.toLowerCase().endsWith(".css"));
-    let jsFile = files.find(file => file.name.toLowerCase().endsWith(".js"));
+    const htmlFile = files.find(file => file.name.toLowerCase().endsWith(".html"));
+    const cssFile = files.find(file => file.name.toLowerCase().endsWith(".css"));
+    const jsFile = files.find(file => file.name.toLowerCase().endsWith(".js"));
 
-    let finalFiles = [];
+    const finalFiles = [];
 
-    if (htmlFile) {
-      finalFiles.push({
-        name: "index.html",
-        text: htmlFile.text
-      });
-    } else {
-      finalFiles.push({
-        name: "index.html",
-        text: `<!DOCTYPE html>
+    finalFiles.push({
+      name: "index.html",
+      text: htmlFile
+        ? htmlFile.text
+        : `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -48,8 +44,7 @@ export default async function handler(req, res) {
 <script src="script.js"></script>
 </body>
 </html>`
-      });
-    }
+    });
 
     if (cssFile) {
       finalFiles.push({
@@ -67,7 +62,7 @@ export default async function handler(req, res) {
 
     for (const file of finalFiles) {
       const path = `sites/${siteId}/${file.name}`;
-      const content = Buffer.from(file.text, "utf8").toString("base64");
+      const content = Buffer.from(file.text || "", "utf8").toString("base64");
 
       const githubResponse = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
@@ -90,14 +85,14 @@ export default async function handler(req, res) {
 
       if (!githubResponse.ok) {
         return res.status(500).json({
-          error: "GitHub error: " + githubText
+          error: `GitHub error for ${owner}/${repo}: ${githubText}`
         });
       }
     }
 
-    const url = `https://${owner}.github.io/${repo}/sites/${siteId}/`;
-
-    return res.status(200).json({ url });
+    return res.status(200).json({
+      url: `https://${owner}.github.io/${repo}/sites/${siteId}/`
+    });
   } catch (err) {
     return res.status(500).json({
       error: err.message || "Unknown server error"
